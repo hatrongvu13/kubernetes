@@ -1,0 +1,28 @@
+pipeline {
+    agent any
+    environment {
+        DOCKER_HOST = "tcp://dind:2375"
+    }
+    stages {
+        stage('Check User & Install Docker CLI') {
+            steps {
+                sh '''
+                if ! command -v docker &> /dev/null; then
+                    echo "Installing Docker CLI..."
+                    apt update && apt install -y docker.io || echo "Failed to install Docker CLI"
+                    // apt install -y docker-ce-cli  || echo "Failed to install Docker CLI"
+                else
+                    echo "Docker CLI is already installed."
+                fi
+                '''
+            }
+        }
+        stage('Test Docker') {
+            steps {
+                sh 'docker version'
+                sh 'docker info'
+                sh 'docker run hello-world'
+            }
+        }
+    }
+}

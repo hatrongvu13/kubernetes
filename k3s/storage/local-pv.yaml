@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: local-pv
+spec:
+  capacity:
+    storage: 650Gi  # Dung lượng ổ cứng
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteOnce  # Có thể chỉnh thành ReadWriteMany nếu cần
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: manual
+  local:
+    path: /mnt/data/k3s  # Đường dẫn đến ổ cứng được mount
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: kubernetes.io/hostname
+              operator: In
+              values:
+                - jaxpi4  # Tên của node mà ổ cứng đã được gắn vào
