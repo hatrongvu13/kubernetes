@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rtsp-simple-server
+spec:
+  replicas: 1  # Số lượng bản sao của pod, bạn có thể điều chỉnh
+  selector:
+    matchLabels:
+      app: rtsp-simple-server
+  template:
+    metadata:
+      labels:
+        app: rtsp-simple-server
+    spec:
+      containers:
+        - name: rtsp-simple-server
+          image: aler9/rtsp-simple-server:latest  # Sử dụng Docker image chính thức từ aler9
+          ports:
+            - containerPort: 8554  # Expose cổng RTSP
+          volumeMounts:
+            - name: config-volume
+              mountPath: /etc/rtsp-simple-server
+              readOnly: true
+      volumes:
+        - name: config-volume
+          persistentVolumeClaim:
+            claimName: local-pvc-rstp
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rtsp-simple-server
+spec:
+  selector:
+    app: rtsp-simple-server
+  ports:
+    - protocol: TCP
+      port: 8554
+      targetPort: 8554
+  type: LoadBalancer  #NodePort  # Hoặc LoadBalancer nếu cần
