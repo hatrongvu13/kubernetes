@@ -1,14 +1,14 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: local-pvc-jenkins
+  name: jenkins-pvc
 spec:
   accessModes:
-    - ReadWriteOnce
+    - ReadWriteMany
   resources:
     requests:
       storage: 50Gi  # Chỉ định dung lượng bạn muốn yêu cầu
-  storageClassName: manual  # Tên StorageClass cần trùng với PV
+  storageClassName: nfs-storage  # Tên StorageClass cần trùng với PV
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -41,7 +41,7 @@ spec:
       volumes:
         - name: local-jenkins
           persistentVolumeClaim:
-            claimName: local-pvc-jenkins
+            claimName: jenkins-pvc
 ---
 apiVersion: v1
 kind: Service
