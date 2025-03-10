@@ -8,4 +8,4 @@ spec:
   resources:
     requests:
       storage: 50Gi  # Chỉ định dung lượng bạn muốn yêu cầu
-  storageClassName: manual  # Tên StorageClass cần trùng với PV
+  storageClassName: local-path  # Tên StorageClass cần trùng với PV

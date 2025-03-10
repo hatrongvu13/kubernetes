@@ -1,0 +1,103 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: shinobi-pv
+spec:
+  capacity:
+    storage: 10Gi  # Dung lượng tùy chỉnh theo nhu cầu
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: local-path  # Mặc định trong K3s
+  hostPath:
+    path: "/mnt/shinobi-data"  # Thư mục trên node, cần tạo trước
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: shinobi-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+  storageClassName: local-path
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: shinobi-config
+data:
+  conf.json: |
+    {
+      "port": 8080,
+      "db": {
+        "host": "localhost",
+        "database": "ccio",
+        "user": "root",
+        "password": "your_password_here"
+      }
+    }
+  super.json: |
+    {
+      "superUsers": [
+        {
+          "mail": "admin@shinobi.com",
+          "pass": "admin_password"
+        }
+      ]
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shinobi
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: shinobi
+  template:
+    metadata:
+      labels:
+        app: shinobi
+    spec:
+      containers:
+        - name: shinobi
+          image: migoller/shinobicctv:latest
+          ports:
+            - containerPort: 8080
+          env:
+            - name: MYSQL_ROOT_PASSWORD
+              value: "your_password_here"  # Phải khớp với conf.json
+          volumeMounts:
+            - name: config
+              mountPath: "/config/conf.json"
+              subPath: "conf.json"
+            - name: config
+              mountPath: "/config/super.json"
+              subPath: "super.json"
+            - name: storage
+              mountPath: "/var/lib/shinobi/videos"
+      volumes:
+        - name: config
+          configMap:
+            name: shinobi-config
+        - name: storage
+          persistentVolumeClaim:
+            claimName: shinobi-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: shinobi-service
+spec:
+  selector:
+    app: shinobi
+  ports:
+    - protocol: TCP
+      port: 8080
+      targetPort: 8080
+      nodePort: 30080  # Port truy cập từ ngoài, có thể thay đổi
+  type: LoadBalancer

@@ -9,7 +9,7 @@ spec:
   accessModes:
     - ReadWriteOnce  # Có thể chỉnh thành ReadWriteMany nếu cần
   persistentVolumeReclaimPolicy: Retain
-  storageClassName: manual
+  storageClassName: local-path # Storage class name mac dinh cua k3s
   local:
     path: /mnt/data/k3s  # Đường dẫn đến ổ cứng được mount
   nodeAffinity:
