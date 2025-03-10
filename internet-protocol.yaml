@@ -1,0 +1,24 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: internet-protocol
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: internet-protocol
+  template:
+    metadata:
+      labels:
+        app: internet-protocol
+    spec:
+      containers:
+        - name: internet-protocol
+          image: ghcr.io/hatrongvu13/telegram-noti:59820a6e9dda2508f40707a8aca74d2ff57576d2
+          imagePullPolicy: Always
+          env:
+            - name: BOT_TOKEN
+              value: ""
+      imagePullSecrets:
+        - name: ghcr-secret  # Sử dụng Secret đã tạo
