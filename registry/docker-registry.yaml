@@ -1,3 +1,15 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pvc-registry
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 10Gi
+  storageClassName: nfs-storage
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -25,7 +37,7 @@ spec:
       volumes:
         - name: registry-storage
           persistentVolumeClaim:
-            claimName: local-pvc-registry
+            claimName: pvc-registry
 
 ---
 apiVersion: v1
