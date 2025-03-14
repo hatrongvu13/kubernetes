@@ -35,9 +35,9 @@ spec:
               name: local-jenkins
           securityContext:
             runAsUser: 0 # user root
-          env:
-            - name: DOCKER_HOST
-              value: "tcp://dind:2375"
+#          env:
+#            - name: DOCKER_HOST
+#              value: "tcp://dind:2375"
       volumes:
         - name: local-jenkins
           persistentVolumeClaim:
