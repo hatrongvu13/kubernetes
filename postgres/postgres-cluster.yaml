@@ -1,0 +1,154 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 15Gi
+  storageClassName: nfs-storage
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-config
+data:
+  POSTGRES_DB: "mydatabase"
+  POSTGRES_USER: "admin"
+  POSTGRES_PASSWORD: "password"
+  REPLICATOR_USER: "replicator"
+  REPLICATOR_PASSWORD: "replicator_pass"
+  POSTGRES_REPLICATION_MODE: "master"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: postgres-secret
+type: Opaque
+data:
+  POSTGRES_PASSWORD: cGFzc3dvcmQ=   # "password" (Base64)
+  REPLICATOR_PASSWORD: cmVwbGljYXRvcl9wYXNz  # "replicator_pass" (Base64)
+--- # master
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres-master
+spec:
+  serviceName: "postgres-master"
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+      role: master
+  template:
+    metadata:
+      labels:
+        app: postgres
+        role: master
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:15
+          ports:
+            - containerPort: 5432
+          envFrom:
+            - configMapRef:
+                name: postgres-config
+            - secretRef:
+                name: postgres-secret
+          volumeMounts:
+            - name: postgres-storage
+              mountPath: /var/lib/postgresql/data
+          command:
+            - "sh"
+            - "-c"
+            - |
+              echo "host replication replicator 0.0.0.0/0 trust" >> /var/lib/postgresql/data/pg_hba.conf
+              echo "wal_level = replica" >> /var/lib/postgresql/data/postgresql.conf
+              echo "max_wal_senders = 5" >> /var/lib/postgresql/data/postgresql.conf
+              echo "hot_standby = on" >> /var/lib/postgresql/data/postgresql.conf
+              exec docker-entrypoint.sh postgres
+  volumeClaimTemplates:
+    - metadata:
+        name: postgres-storage
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 15Gi
+--- # slave
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres-slave
+spec:
+  serviceName: "postgres-slave"
+  replicas: 2
+  selector:
+    matchLabels:
+      app: postgres
+      role: slave
+  template:
+    metadata:
+      labels:
+        app: postgres
+        role: slave
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:15
+          ports:
+            - containerPort: 5432
+          envFrom:
+            - configMapRef:
+                name: postgres-config
+            - secretRef:
+                name: postgres-secret
+          volumeMounts:
+            - name: postgres-storage
+              mountPath: /var/lib/postgresql/data
+          command:
+            - "sh"
+            - "-c"
+            - |
+              rm -rf /var/lib/postgresql/data/*
+              PGPASSWORD=$REPLICATOR_PASSWORD pg_basebackup -h postgres-master -D /var/lib/postgresql/data -U $REPLICATOR_USER -Fp -Xs -R -P
+              exec docker-entrypoint.sh postgres
+  volumeClaimTemplates:
+    - metadata:
+        name: postgres-storage
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 15Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-master
+spec:
+  type: LoadBalancer
+  ports:
+    - port: 5432
+      targetPort: 5432
+  selector:
+    app: postgres
+    role: master
+#  clusterIP: None
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-slave
+spec:
+  type: LoadBalancer
+  ports:
+    - port: 5432
+      targetPort: 5432
+  selector:
+    app: postgres
+    role: slave
+#  clusterIP: None
